@@ -1,8 +1,8 @@
 # CS231N
 CS231N Project - COVID-19 CXR Neural Network Extensions
 
-Significant works:
-
+Significant works
+=================
 1. [COVID-Net](https://arxiv.org/pdf/2003.09871.pdf)
    * [Model](https://github.com/lindawangg/COVID-Net)
 2. [COVID-19 Image collection Paper](https://arxiv.org/pdf/2003.11597.pdf)
@@ -10,6 +10,7 @@ Significant works:
 
 
 Major work Items
+================
 1. Port model to Pytorch (from Keras)
 2. Establish a baseline using existing model and other prediction techniques
 3. Data Augmentation
