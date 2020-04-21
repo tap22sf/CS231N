@@ -7,7 +7,8 @@ Significant works
 2. [COVID-19 Image collection Paper](https://arxiv.org/pdf/2003.11597.pdf)
    * [Dataset](https://github.com/ieee8023/covid-chestxray-dataset)
 3. [COVID CT Database](https://arxiv.org/pdf/2003.13865.pdf)
-
+   * [Dataset](https://github.com/UCSD-AI4H/COVID-CT)
+  
 Major work Items
 ================
 1. Port model to Pytorch (from Keras)
