@@ -20,7 +20,7 @@ Major work Items
    * Noise injection
 
 4. Train Models
-    * Given the small amopunt of COVID-19 data, we will likely need to use transfer learning
+    * Given the small amount of COVID-19 data, we will likely need to use transfer learning
 5. Evaluate results
 6. Write up literasture survey
 7. Preare report and Video
