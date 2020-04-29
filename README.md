@@ -26,3 +26,9 @@ Major work Items
 5. Evaluate results
 6. Write up literasture survey
 7. Preare report and Video
+
+Target Dates
+============
+1. Port by 5/15 - collab in github
+2. Data Augmentation infrastructure and first - pull data and add to private gitghub
+3. KNN for basesline, random Forest, logistic regression.
