@@ -14,7 +14,7 @@ Significant works
 
 Major work Items
 ================
-1. Port model to Pytorch (from Keras)
+1. Port model to Pytorch (from Keras) - Found Pytorch port done.
 2. Establish a baseline using existing model and other prediction techniques
 3. Data Augmentation
    * Rotation
