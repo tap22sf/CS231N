@@ -10,6 +10,7 @@ Significant works
    * [Dataset](https://github.com/UCSD-AI4H/COVID-CT)
 4. Additional dataset of CXR:
    * [TorchXRayvision](https://github.com/mlmed/torchxrayvision)
+5. Pytorch version of COVID-Net https://github.com/IliasPap/COVIDNet
 
 Major work Items
 ================
