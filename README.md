@@ -1,4 +1,4 @@
-#S231N Project - COVID-19 CXR Neural Network Extensions
+CS231N Project - COVID-19 CXR Neural Network Extensions
 
 Significant works
 =================
