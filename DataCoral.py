@@ -1,34 +1,3 @@
-# To add a new cell, type '# %%'
-# To add a new markdown cell, type '# %% [markdown]'
-# %%
-#from IPython import get_ipython
-
-# %% [markdown]
-# # DATASET EXTRACTION
-# %% [markdown]
-# ## Import datasets and github
-# * Clone chestxray dataset from the github link https://github.com/ieee8023/covid-chestxray-dataset.git
-# 
-# * RSNA Pneumonia Detection Challenge dataset
-# https://www.kaggle.com/c/rsna-pneumonia-detection-challenge and unzip rsna_dataset here
-
-# %%
-#from google.colab import drive
-#drive.mount('/content/drive')
-
-
-## %%
-#get_ipython().system(' git clone https://github.com/ieee8023/covid-chestxray-dataset.git')
-#get_ipython().system(' git clone https://github.com/IliasPap/COVIDNet.git')
-COPY_FILE = True
-#get_ipython().system(' mkdir /content/rsna_dataset')
-# add code for uploading Kaggle JSON file (individual token)from google.colab import filesfiles.upload()!mkdir -p ~/.kaggle!cp kaggle.json ~/.kaggle/# To prevent permission warning!chmod 600 ~/.kaggle/kaggle.json# Otherwise use kaggle commands, to be updated !!!!
-# ! kaggle competitions download -c rsna-pneumonia-detection-challenge -p /content/rsna_dataset
-#get_ipython().system(" unzip -q '/content/drive/My Drive/MEDICAL/rsna-pneumonia-detection-challenge.zip' -d /content/rsna_dataset/")
-
-
-# %%
-#get_ipython().system(' pip install pydicom')
 import numpy as np
 import pandas as pd
 import os
@@ -37,13 +6,16 @@ from shutil import copyfile
 import pydicom as dicom
 import cv2
 
+COPY_FILE = True
 
-# %%
 seed = 0
 np.random.seed(seed) # Reset the seed so all runs are the same.
 random.seed(seed)
 MAXVAL = 255  # Range [0 255]
-root = 'G:\covid-chestxray-dataset'
+
+# Path to the combined dataset (train, val and test)
+root = 'G:/combinedDataset'
+savepath = root + '/data'
 
 if (COPY_FILE):
     savepath = root + '/data'
@@ -56,13 +28,15 @@ if (COPY_FILE):
     if(not os.path.exists(savepath)):
         os.makedirs(savepath)
 
-savepath = root + '/data'
+# Paths to the downloaded datasets
+covidPath = 'G:/DownloadedDatasets/covid-chestxray-dataset'
+kaggle_datapath = 'G:/DownloadedDatasets/rsna-pneumonia-detection-challenge'
+
 # path to covid-19 dataset from https://github.com/ieee8023/covid-chestxray-dataset
-imgpath = root + '/images' 
-csvpath = root + '/metadata.csv'
+imgpath = covidPath + '/images' 
+csvpath = covidPath + '/metadata.csv'
 
 # path to https://www.kaggle.com/c/rsna-pneumonia-detection-challenge
-kaggle_datapath = ''G:\covid-chestxray-dataset'/content/rsna_kaggle_dataset'
 kaggle_csvname = 'stage_2_detailed_class_info.csv' # get all the normal from here
 kaggle_csvname2 = 'stage_2_train_labels.csv' # get all the 1s from here since 1 indicate pneumonia
 kaggle_imgpath = 'stage_2_train_images'
@@ -85,8 +59,6 @@ mapping['1'] = 'pneumonia'
 # train/test split
 split = 0.1
 
-
-# %%
 # adapted from https://github.com/mlmed/torchxrayvision/blob/master/torchxrayvision/datasets.py#L814
 csv = pd.read_csv(csvpath, nrows=None)
 idx_pa = csv["view"] == "PA"  # Keep only the PA view
@@ -96,8 +68,6 @@ pneumonias = ["COVID-19", "SARS", "MERS", "ARDS", "Streptococcus"]
 pathologies = ["Pneumonia","Viral Pneumonia", "Bacterial Pneumonia", "No Finding"] + pneumonias
 pathologies = sorted(pathologies)
 
-
-# %%
 # get non-COVID19 viral, bacteria, and COVID-19 infections from covid-chestxray-dataset
 # stored as patient id, image filename and label
 filename_label = {'normal': [], 'pneumonia': [], 'COVID-19': []}
@@ -112,7 +82,6 @@ for index, row in csv.iterrows():
 
 print('Data distribution from covid-chestxray-dataset:')
 print(count)
-
 
 # %%
 # add covid-chestxray-dataset into COVIDx dataset
@@ -154,7 +123,6 @@ for key in filename_label.keys():
                 copyfile(os.path.join(imgpath, patient[1]), os.path.join(savepath, 'train', patient[1]))
                 train.append(patient)
                 train_count[patient[2]] += 1
-
             else:
                 print("WARNING   :   passing copy file !!!!!!!!!!!!!!!!!!!!!!")
                 break
@@ -162,15 +130,9 @@ for key in filename_label.keys():
 print('test count: ', test_count)
 print('train count: ', train_count)
 
-# %% [markdown]
 # ## Preprocess data
-# Copy kaggle dataset inyto train and test folders
-
-# %%
+# Copy kaggle dataset into train and test folders
 # add normal and rest of pneumonia cases from https://www.kaggle.com/c/rsna-pneumonia-detection-challenge
-
-
-kaggle_datapath = '/content/rsna_dataset'
 
 print(kaggle_datapath)
 csv_normal = pd.read_csv(os.path.join(kaggle_datapath, kaggle_csvname), nrows=None)
@@ -193,7 +155,7 @@ for key in patients.keys():
     # num_diff_patients = len(np.unique(arr))
     # num_test = max(1, round(split*num_diff_patients))
     #'/content/COVID-Net/'
-    test_patients = np.load('/content/COVIDNet/rsna_test_patients_{}.npy'.format(key)) # random.sample(list(arr), num_test)
+    test_patients = np.load('rsna_test_patients_{}.npy'.format(key)) # random.sample(list(arr), num_test)
     # np.save('rsna_test_patients_{}.npy'.format(key), np.array(test_patients))
     for patient in arr:
         ds = dicom.dcmread(os.path.join(kaggle_datapath, kaggle_imgpath, patient + '.dcm'))
@@ -253,12 +215,12 @@ test_file.close()
 # # Requirements
 
 # %%
-get_ipython().system(' pip install torch torcvision pandas')
+#get_ipython().system(' pip install torch torcvision pandas')
 
 # %% [markdown]
 # # Training
 
 # %%
-get_ipython().run_line_magic('cd', 'COVIDNet')
-get_ipython().system(" python main.py --dataset_name='COVIDx' --root_path='/content/covid-chestxray-dataset/data'")
+#get_ipython().run_line_magic('cd', 'COVIDNet')
+#get_ipython().system(" python main.py --dataset_name='COVIDx' --root_path='/content/covid-chestxray-dataset/data'")
 

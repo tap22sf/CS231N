@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>52eddda5-26f1-40e5-8ee0-15dc4c587dfa</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>CV.py</StartupFile>
+    <StartupFile>DataCoral.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -27,7 +27,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="CV.py" />
+    <Compile Include="DataCoral.py" />
     <Compile Include="data_loader\covidxdataset.py" />
     <Compile Include="data_loader\covid_ct_dataset.py" />
     <Compile Include="data_loader\__init__.py" />
