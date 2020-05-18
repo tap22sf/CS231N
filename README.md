@@ -11,7 +11,8 @@ Significant works
 4. Additional dataset of CXR:
    * [TorchXRayvision](https://github.com/mlmed/torchxrayvision)
 5. Pytorch version of COVID-Net https://github.com/IliasPap/COVIDNet
-6. RSNA pneumonia dataset : https://www.kaggle.com/c/rsna-pneumonia-detection-challenge/data
+6. Datasets:
+   * [Phase 2 RSNA Challenge]] https://www.kaggle.com/c/rsna-pneumonia-detection-challenge/data
 
 Major work Items
 ================
