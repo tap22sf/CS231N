@@ -39,8 +39,8 @@ class COVIDxDataset(Dataset):
         self.CLASSES = n_classes
         self.dim = dim
         self.COVIDxDICT = {'pneumonia': 0, 'normal': 1, 'COVID-19': 2}
-        testfile = './data/covid_x_dataset/test_split_v2.txt'
-        trainfile = './data/covid_x_dataset/train_split_v2.txt'
+        testfile = str(dataset_path) + '/' + 'test_split_v2.txt'
+        trainfile = str(dataset_path) + '/' + 'train_split_v2.txt'
         if (mode == 'train'):
             self.paths, self.labels = read_filepaths(trainfile)
             self.transform = train_transformer

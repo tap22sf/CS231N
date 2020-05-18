@@ -53,12 +53,12 @@ def datestr():
 
 def save_checkpoint(state, is_best, path, filename='last'):
     name = os.path.join(path, filename + '_checkpoint.pth.tar')
-    print(name)
+    #print(name)
     torch.save(state, name)
 
 
-def save_model(model, optimizer, args, metrics, epoch, best_pred_loss, confusion_matrix):
-    loss = metrics.data['loss']
+def save_model(model, optimizer, args, loss, epoch, best_pred_loss, confusion_matrix):
+    
     save_path = args.save
     make_dirs(save_path)
 
@@ -71,16 +71,14 @@ def save_model(model, optimizer, args, metrics, epoch, best_pred_loss, confusion
         best_pred_loss = loss
         save_checkpoint({'epoch': epoch,
                          'state_dict': model.state_dict(),
-                         'optimizer': optimizer.state_dict(),
-                         'metrics': metrics.data},
+                         'optimizer': optimizer.state_dict()},
                         is_best, save_path, args.model + "_best")
         np.save(save_path + 'best_confusion_matrix.npy', confusion_matrix.cpu().numpy())
 
     else:
         save_checkpoint({'epoch': epoch,
                          'state_dict': model.state_dict(),
-                         'optimizer': optimizer.state_dict(),
-                         'metrics': metrics.data},
+                         'optimizer': optimizer.state_dict()},
                         False, save_path, args.model + "_last")
 
     return best_pred_loss
@@ -122,81 +120,6 @@ def read_filepaths(file):
     return paths, labels
 
 
-class MetricTracker:
-    def __init__(self, *keys, writer=None, mode='/'):
-
-        self.writer = writer
-        self.mode = mode + '/'
-        self.keys = keys
-        print(self.keys)
-        self._data = pd.DataFrame(index=keys, columns=['total', 'counts', 'average'])
-        self.reset()
-
-    def reset(self):
-        for col in self._data.columns:
-            self._data[col].values[:] = 0
-
-    def update(self, key, value, n=1, writer_step=1):
-        if self.writer is not None:
-            self.writer.add_scalar(self.mode + key, value, writer_step)
-        self._data.total[key] += value * n
-        self._data.counts[key] += n
-        self._data.average[key] = self._data.total[key] / self._data.counts[key]
-
-    def update_all_metrics(self, values_dict, n=1, writer_step=1):
-        for key in values_dict:
-            self.update(key, values_dict[key], n, writer_step)
-
-    def avg(self, key):
-        return self._data.average[key]
-
-    def result(self):
-        return dict(self._data.average)
-
-    def print_all_metrics(self):
-        s = ''
-        d = dict(self._data.average)
-        for key in dict(self._data.average):
-            s += "{} {:.4f}\t".format(key, d[key])
-
-        return s
-
-
-class Metrics:
-    def __init__(self, path, keys=None, writer=None):
-        self.writer = writer
-
-        self.data = {'correct': 0,
-                     'total': 0,
-                     'loss': 0,
-                     'accuracy': 0,
-                     }
-        self.save_path = path
-
-    def reset(self):
-        for key in self.data:
-            self.data[key] = 0
-
-    def update_key(self, key, value, n=1):
-        if self.writer is not None:
-            self.writer.add_scalar(key, value)
-        self.data[key] += value
-
-    def update(self, values):
-        for key in self.data:
-            self.data[key] += values[key]
-
-    def avg_acc(self):
-        return self.data['correct'] / self.data['total']
-
-    def avg_loss(self):
-        return self.data['loss'] / self.data['total']
-
-    def save(self):
-        with open(self.save_path, 'w') as save_file:
-            a = 0  # csv.writer()
-            # TODO
-
 
 def select_model(args):
     if args.model == 'COVIDNet_small':
@@ -226,6 +149,7 @@ def read_txt(txt_path):
 
 def print_stats(args, epoch, num_samples, trainloader, metrics):
     if (num_samples % args.log_interval == 1):
+        print("        \033H")
         print("Epoch:{:2d}\tSample:{:5d}/{:5d}\tLoss:{:.4f}\tAccuracy:{:.2f}".format(epoch,
                                                                                      num_samples,
                                                                                      len(
@@ -236,6 +160,7 @@ def print_stats(args, epoch, num_samples, trainloader, metrics):
 
 
 def print_summary(args, epoch, num_samples, metrics, mode=''):
+    print("        \033H")
     print(mode + "\n SUMMARY EPOCH:{:2d}\tSample:{:5d}/{:5d}\tLoss:{:.4f}\tAccuracy:{:.2f}\n".format(epoch,
                                                                                                      num_samples,
                                                                                                      num_samples,
