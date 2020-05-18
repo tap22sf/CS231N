@@ -1,4 +1,4 @@
-#S231N Project - COVID-19 CXR Neural Network Extensions
+CS231N Project - COVID-19 CXR Neural Network Extensions
 
 Significant works
 =================
@@ -10,6 +10,8 @@ Significant works
    * [Dataset](https://github.com/UCSD-AI4H/COVID-CT)
 4. Additional dataset of CXR:
    * [TorchXRayvision](https://github.com/mlmed/torchxrayvision)
+5. Datasets:
+   * [Phase 2 RSNA Challenge]] https://www.kaggle.com/c/rsna-pneumonia-detection-challenge/data
 
 Major work Items
 ================
