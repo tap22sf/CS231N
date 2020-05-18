@@ -10,12 +10,12 @@ Significant works
    * [Dataset](https://github.com/UCSD-AI4H/COVID-CT)
 4. Additional dataset of CXR:
    * [TorchXRayvision](https://github.com/mlmed/torchxrayvision)
-5. Datasets:
-   * [Phase 2 RSNA Challenge]] https://www.kaggle.com/c/rsna-pneumonia-detection-challenge/data
+5. Pytorch version of COVID-Net https://github.com/IliasPap/COVIDNet
+6. RSNA pneumonia dataset : https://www.kaggle.com/c/rsna-pneumonia-detection-challenge/data
 
 Major work Items
 ================
-1. Port model to Pytorch (from Keras)
+1. Port model to Pytorch (from Keras) - Found Pytorch port done.
 2. Establish a baseline using existing model and other prediction techniques
 3. Data Augmentation
    * Rotation
@@ -28,3 +28,9 @@ Major work Items
 5. Evaluate results
 6. Write up literasture survey
 7. Preare report and Video
+
+Target Dates
+============
+1. Port by 5/15 - collab in github
+2. Data Augmentation infrastructure and first - pull data and add to private gitghub
+3. KNN for basesline, random Forest, logistic regression.
