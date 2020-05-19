@@ -4,17 +4,13 @@ import numpy as np
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
+import torchvision
+
 
 import utils.util as util
 from trainer.train import initialize, train, validation
 
 import matplotlib.pyplot as plt
-
-def imshow(img):
-    img = img / 2 + 0.5     # unnormalize
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.show()
 
 # (used in the `plot_classes_preds` function below)
 def matplotlib_imshow(img, one_channel=False):
@@ -26,6 +22,9 @@ def matplotlib_imshow(img, one_channel=False):
         plt.imshow(npimg, cmap="Greys")
     else:
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
+
+    plt.show()
+    return img
 
 
 def main():
@@ -56,8 +55,18 @@ def main():
         writer = SummaryWriter('./runs/' + util.datestr())
         images, labels = next(iter(training_generator))
         writer.add_graph(model, images.to(device))
+
+        img_grid = torchvision.utils.make_grid(images)
+        
+        # show images
+        newimg = matplotlib_imshow(img_grid, one_channel=True)
+
+        # write to tensorboard
+        writer.add_image('Xrays', newimg.unsqueeze(0))
+        
     else:
         writer = None
+
 
     args.nEpochs = 100
     for epoch in range(1, args.nEpochs + 1):
