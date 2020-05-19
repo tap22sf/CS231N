@@ -59,7 +59,7 @@ def main():
     else:
         writer = None
 
-    args.nEpochs = 10
+    args.nEpochs = 100
     for epoch in range(1, args.nEpochs + 1):
         train_loss, train_acc = train(args, model, training_generator, optimizer, epoch, writer, device)
         val_loss, val_acc, confusion_matrix = validation(args, model, val_generator, epoch, writer, device)

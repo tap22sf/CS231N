@@ -46,7 +46,8 @@ def train(args, model, trainloader, optimizer, epoch, writer, device):
 
     running_correct = 0
     running_total = 0
-
+    running_loss = 0
+    cnt = 0
     for batch_idx, input_tensors in enumerate(trainloader):
         optimizer.zero_grad()
         input_data, target = input_tensors[0].to(device), input_tensors[1].to(device)
@@ -54,6 +55,8 @@ def train(args, model, trainloader, optimizer, epoch, writer, device):
         output = model(input_data)
 
         loss = criterion(output, target)
+        running_loss += loss.item()
+
         loss.backward()
 
         optimizer.step()
@@ -62,14 +65,16 @@ def train(args, model, trainloader, optimizer, epoch, writer, device):
         running_total += total
 
         num_samples = batch_idx * args.batch_size + 1
-        
+        cnt += 1
+
         # Early out
-        #if batch_idx >5:
+        #if batch_idx >3:
         #    break
     
     acc = running_correct/running_total
+    ls =  running_loss/cnt
 
-    return loss.item(), acc
+    return ls, acc
 
 def validation(args, model, testloader, epoch, writer, device):
     model.eval()
@@ -78,6 +83,8 @@ def validation(args, model, testloader, epoch, writer, device):
 
     running_correct = 0
     running_total = 0
+    running_loss = 0
+    cnt = 0
     with torch.no_grad():
         for batch_idx, input_tensors in enumerate(testloader):
 
