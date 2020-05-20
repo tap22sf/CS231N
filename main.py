@@ -1,30 +1,10 @@
 import argparse
-
 import numpy as np
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
-
-
-import utils.util as util
-from trainer.train import initialize, train, validation
-
-import matplotlib.pyplot as plt
-
-# (used in the `plot_classes_preds` function below)
-def matplotlib_imshow(img, one_channel=False):
-    if one_channel:
-        img = img.mean(dim=0)
-    img = img / 2 + 0.5     # unnormalize
-    npimg = img.cpu().numpy()
-    if one_channel:
-        plt.imshow(npimg, cmap="Greys")
-    else:
-        plt.imshow(np.transpose(npimg, (1, 2, 0)))
-
-    plt.show()
-    return img
+import matplotlib.pyplot as plt    
 
 
 def main():
@@ -39,58 +19,64 @@ def main():
         torch.cuda.manual_seed(SEED)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(device)
-
+    
     # Load the models and generators
     model, optimizer, training_generator, val_generator, test_generator = initialize(args)
     model.to(device)
 
     #print(model)
-
     best_pred_loss = 1000.0
     scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=1e-5, verbose=True)
     
     print('Checkpoint folder ', args.save)
-    if args.tensorboard:
-        writer = SummaryWriter('./runs/' + util.datestr())
-        images, labels = next(iter(training_generator))
-        writer.add_graph(model, images.to(device))
-
-        img_grid = torchvision.utils.make_grid(images)
+    #if args.tensorboard:
+        #writer = SummaryWriter('./runs/' + util.datestr())
+        
+        #img_grid = torchvision.utils.make_grid(images)
         
         # show images
-        newimg = matplotlib_imshow(img_grid, one_channel=True)
+        #newimg = matplotlib_imshow(img_grid, one_channel=True)
 
         # write to tensorboard
-        writer.add_image('Xrays', newimg.unsqueeze(0))
+        #writer.add_image('Xrays',img_grid)
         
-    else:
-        writer = None
+    #else:
+    #    writer = None
 
 
+    # Load weights if needed
+
+
+    # Freeze weights if needed
+
+        
     args.nEpochs = 100
-    for epoch in range(1, args.nEpochs + 1):
-        train_loss, train_acc = train(args, model, training_generator, optimizer, epoch, writer, device)
-        val_loss, val_acc, confusion_matrix = validation(args, model, val_generator, epoch, writer, device)
-        print("{:3d} train loss/acc : {:5.2f}, % {:3.1f}  val loss/acc : {:5.2f}, % {:3.1f}"
-              .format(epoch, train_loss, 100.0*train_acc, val_loss, 100.0*val_acc))
+    if(train):
+        for epoch in range(1, args.nEpochs + 1):
+            train_loss, train_acc = train(args, model, training_generator, optimizer, epoch, writer, device)
+            val_loss, val_acc, confusion_matrix = validation(args, model, val_generator, epoch, writer, device)
+            print("{:3d} train loss/acc : {:5.2f}, % {:3.1f}  val loss/acc : {:5.2f}, % {:3.1f}"
+                    .format(epoch, train_loss, 100.0*train_acc, val_loss, 100.0*val_acc))
         
-        # Add the tensorboard data
-        if args.tensorboard:
-            writer.add_scalar('Loss/train',         train_loss, epoch)
-            writer.add_scalar('Accuracy/train',     train_acc, epoch)
+            # Add the tensorboard data
+            if args.tensorboard:
+                writer.add_scalar('Loss/train',         train_loss, epoch)
+                writer.add_scalar('Accuracy/train',     train_acc, epoch)
             
-            writer.add_scalar('Loss/val',           val_loss, epoch)
-            writer.add_scalar('Accuracy/val',       val_acc, epoch)
+                writer.add_scalar('Loss/val',           val_loss, epoch)
+                writer.add_scalar('Accuracy/val',       val_acc, epoch)
 
-        best_pred_loss = util.save_model(model, optimizer, args, val_loss, epoch, best_pred_loss, confusion_matrix)
-        scheduler.step(val_loss)
+            best_pred_loss = util.save_model(model, optimizer, args, val_loss, epoch, best_pred_loss, confusion_matrix)
+            scheduler.step(val_loss)
+
+    # Evaluate test set
+
 
     writer.close()
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', type=int, default=24, help='batch size for training')
+    parser.add_argument('--batch_size', type=int, default=128, help='batch size for training')
     parser.add_argument('--log_interval', type=int, default=1000, help='steps to print metrics and loss')
     parser.add_argument('--dataset_name', type=str, default='COVIDx', help='dataset name COVIDx or COVID_CT')
     parser.add_argument('--nEpochs', type=int, default=250, help='total number of epochs')
@@ -104,7 +90,7 @@ def get_arguments():
                         help='use tensorboard for loggging and visualization')
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument('--model', type=str, default='COVIDNet_large',
+    parser.add_argument('--model', type=str, default='COVIDNet_small',
                         choices=('COVIDNet_small', 'resnet18', 'mobilenet_v2', 'densenet169', 'COVIDNet_large'))
     parser.add_argument('--opt', type=str, default='adam',
                         choices=('sgd', 'adam', 'rmsprop'))
@@ -117,5 +103,12 @@ def get_arguments():
 
 
 if __name__ == '__main__':
+
+
+    import utils.util as util
+    from trainer.train import initialize, train, validation
+
+    print ("Running main")
     main()
+
 

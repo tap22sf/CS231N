@@ -52,12 +52,11 @@ def datestr():
 
 
 def save_checkpoint(state, is_best, path, filename='last'):
-    name = os.path.join(path, filename + '_checkpoint.pth.tar')
-    #print(name)
+    name = os.path.join(path, filename + '_checkpoint.pt')
     torch.save(state, name)
 
 
-def save_model(model, optimizer, args, loss, epoch, best_pred_loss, confusion_matrix):
+def save_model(model, args, loss, epoch, best_pred_loss, confusion_matrix):
     
     save_path = args.save
     make_dirs(save_path)
@@ -70,15 +69,13 @@ def save_model(model, optimizer, args, loss, epoch, best_pred_loss, confusion_ma
         is_best = True
         best_pred_loss = loss
         save_checkpoint({'epoch': epoch,
-                         'state_dict': model.state_dict(),
-                         'optimizer': optimizer.state_dict()},
+                         'state_dict': model.state_dict()},
                         is_best, save_path, args.model + "_best")
         np.save(save_path + 'best_confusion_matrix.npy', confusion_matrix.cpu().numpy())
 
     else:
         save_checkpoint({'epoch': epoch,
-                         'state_dict': model.state_dict(),
-                         'optimizer': optimizer.state_dict()},
+                         'state_dict': model.state_dict()},
                         False, save_path, args.model + "_last")
 
     return best_pred_loss
@@ -119,12 +116,9 @@ def read_filepaths(file):
             labels.append(label)
     return paths, labels
 
-
-
 def select_model(args):
     if args.model == 'COVIDNet_small':
         return CovidNet('small', n_classes=args.classes)
-
     elif args.model == 'COVIDNet_large':
         return CovidNet('large', n_classes=args.classes)
     elif args.model in ['resnet18', 'mobilenet2', 'densenet169', 'resneXt']:
@@ -139,7 +133,6 @@ def select_optimizer(args, model):
     elif args.opt == 'rmsprop':
         return optim.RMSprop(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
-
 def read_txt(txt_path):
     with open(txt_path) as f:
         lines = f.readlines()
@@ -148,26 +141,16 @@ def read_txt(txt_path):
 
 
 def print_stats(args, epoch, num_samples, trainloader, metrics):
-    if (num_samples % args.log_interval == 1):
-        print("        \033H")
-        print("Epoch:{:2d}\tSample:{:5d}/{:5d}\tLoss:{:.4f}\tAccuracy:{:.2f}".format(epoch,
+    print("Epoch:{:2d}\tSample:{:5d}/{:5d}\tTrain Loss:  {:.4f}\tTrain Accuracy:  {:.2f}".format(epoch,
                                                                                      num_samples,
-                                                                                     len(
-                                                                                         trainloader) * args.batch_size,
-                                                                                     metrics.avg('loss')
-                                                                                     ,
+                                                                                     len(trainloader) * args.batch_size,
+                                                                                     metrics.avg('loss'),
                                                                                      metrics.avg('accuracy')))
 
-
-def print_summary(args, epoch, num_samples, metrics, mode=''):
-    print("        \033H")
-    print(mode + "\n SUMMARY EPOCH:{:2d}\tSample:{:5d}/{:5d}\tLoss:{:.4f}\tAccuracy:{:.2f}\n".format(epoch,
-                                                                                                     num_samples,
-                                                                                                     num_samples,
-                                                                                                     metrics.avg(
-                                                                                                         'loss'),
-                                                                                                     metrics.avg(
-                                                                                                         'accuracy')))
+def print_summary(args, epoch, metrics):
+    print("\nSUMMARY EPOCH:{:2d}\tVal Loss:{:.4f}\t\t Val Accuracy:{:.2f}\n".format(epoch,
+                                                                                    metrics.avg('loss'),
+                                                                                    metrics.avg('accuracy')))
 
 
 # TODO
@@ -183,3 +166,47 @@ def confusion_matrix(nb_classes):
                 confusion_matrix[t.long(), p.long()] += 1
 
     print(confusion_matrix)
+
+
+class MetricTracker:
+    def __init__(self, *keys, writer=None, mode='/'):
+
+        self.writer = writer
+        self.mode = mode + '/'
+        self.keys = keys
+        self._data = pd.DataFrame(index=keys, columns=['total', 'counts', 'average'])
+        self.reset()
+
+    def reset(self):
+        for col in self._data.columns:
+            self._data[col].values[:] = 0
+
+    def update(self, key, value, n=1):
+        self._data.total[key] += value * n
+        self._data.counts[key] += n
+        self._data.average[key] = self._data.total[key] / self._data.counts[key]
+
+    def update_all_metrics(self, values_dict, n=1):
+        for key in values_dict:
+            self.update(key, values_dict[key], n)
+        
+    def write_tb(self, index):
+        # Add the tensorboard data
+        if self.writer:
+            d = dict(self._data.average)
+            self.writer.add_scalar(self.mode + 'Loss', d['loss'], index)
+            self.writer.add_scalar(self.mode + 'Accuracy', d['accuracy'], index)
+
+    def avg(self, key):
+        return self._data.average[key]
+
+    def result(self):
+        return dict(self._data.average)
+
+    def print_all_metrics(self):
+        s = ''
+        d = dict(self._data.average)
+        for key in dict(self._data.average):
+            s += "{} {:.4f}\t".format(key, d[key])
+
+        return s

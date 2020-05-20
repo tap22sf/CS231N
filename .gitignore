@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 save/
+gold_save/
 runs/
 data/
 

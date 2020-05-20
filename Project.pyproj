@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>52eddda5-26f1-40e5-8ee0-15dc4c587dfa</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>main.py</StartupFile>
+    <StartupFile>loadtest.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -34,6 +34,9 @@
     <Compile Include="data_loader\covidxdataset.py" />
     <Compile Include="data_loader\covid_ct_dataset.py" />
     <Compile Include="data_loader\__init__.py" />
+    <Compile Include="loadtest.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="main.py" />
     <Compile Include="model\loss.py" />
     <Compile Include="model\metric.py" />
