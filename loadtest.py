@@ -69,7 +69,7 @@ def main():
             train_metrics, writer_step = train2(model, args, device, writer, scheduler, optimizer, dataset, epoch)
 
             # Run Inference on val set
-            val_loss = inference (args, model, val_dataset, epoch, writer, device, writer_step)
+            val_loss, confusion_matrix = inference (args, model, val_dataset, epoch, writer, device, writer_step)
             best_pred_loss = util.save_model(model, args, val_loss, epoch, best_pred_loss, confusion_matrix)
             scheduler.step(val_loss)
 
@@ -91,7 +91,7 @@ def inference(args, model, val_dataset, epoch, writer, device, writer_step):
     # Print the confusion matrix
     print('Confusion Matrix\n{}'.format(confusion_matrix.cpu().numpy()))
 
-    return val_loss
+    return val_loss, confusion_matrix
 
 
 def train2(model, args, device, writer, scheduler, optimizer, dataset, epoch):
@@ -119,12 +119,11 @@ def train2(model, args, device, writer, scheduler, optimizer, dataset, epoch):
         metrics.update_all_metrics({'correct': correct, 'total': total, 'loss': loss.item(), 'accuracy': acc})
     
         # Save TB stats
-        writer_step = (epoch - 1) * len(data_loader) + batch_idx
-        if (batch_idx % args.log_interval == 0):
+        writer_step = (epoch - 1) * len(data_loader) + batch_idx 
+        if ((batch_idx+1) % args.log_interval == 0):
             metrics.write_tb (writer_step)
             num_samples = batch_idx * args.batch_size
             print_stats(args, epoch, num_samples, data_loader, metrics)
-        #if batch_idx >3: break
 
     return metrics, writer_step
 
@@ -161,7 +160,7 @@ def val2(args, model, val_dataset, epoch, writer, device):
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', type=int, default=23, help='batch size for training')
+    parser.add_argument('--batch_size', type=int, default=20, help='batch size for training')
     parser.add_argument('--log_interval', type=int, default=50, help='steps to print metrics and loss')
     parser.add_argument('--dataset_name', type=str, default='COVIDx', help='dataset name COVIDx or COVID_CT')
     parser.add_argument('--nEpochs', type=int, default=100, help='total number of epochs')
