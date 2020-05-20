@@ -1,5 +1,6 @@
 CS231N Project - COVID-19 CXR Neural Network Extensions
-![Alt text](./Chest XRays.png?raw=true "XRays")
+
+![XRays](https://raw.githubusercontent.com/tap22sf/CS231N/Chest XRays.png)
 
 Significant works
 =================
