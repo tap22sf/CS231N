@@ -41,6 +41,9 @@
     <Compile Include="model\metric.py" />
     <Compile Include="model\model.py" />
     <Compile Include="model\__init__.py" />
+    <Compile Include="train\train.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="utils\util.py" />
     <Compile Include="utils\__init__.py" />
   </ItemGroup>
@@ -52,6 +55,7 @@
     <Folder Include="data_loader\__pycache__\" />
     <Folder Include="model\" />
     <Folder Include="model\__pycache__\" />
+    <Folder Include="train\" />
     <Folder Include="utils\" />
     <Folder Include="utils\__pycache__\" />
   </ItemGroup>

@@ -11,7 +11,7 @@ num_workers = 3
 
 def main():
 
-    train = True
+    train = False
     
     args = get_arguments()
     SEED = args.seed
@@ -30,8 +30,8 @@ def main():
     # Load from a model if not training
     model = select_model(args)
     if not train:
-        #path = './save/COVIDNet20200520_0504/COVIDNet_large_best_checkpoint.pt'
-        path = './gold_save/COVIDNet_large_best_checkpoint.pt'
+        path = './save/COVIDNet20200520_0709/COVIDNet_large_best_checkpoint.pt'
+        #path = './gold_save/COVIDNet_large_best_checkpoint.pt'
         checkpoint  = torch.load(path)
         model.load_state_dict(checkpoint['state_dict'])
         
@@ -205,7 +205,7 @@ def matplotlib_imshow(img, one_channel=False):
 if __name__ == '__main__':
     from utils.util import print_stats, print_summary, select_model, select_optimizer, MetricTracker
     import utils.util as util
-    from trainer.train import initialize_datasets
+    from train.train import initialize_datasets
     from data_loader.covidxdataset import COVIDxDataset
     from model.metric import accuracy
 
