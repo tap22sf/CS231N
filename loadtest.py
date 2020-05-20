@@ -7,16 +7,12 @@ from torch.utils.tensorboard import SummaryWriter
 import torchvision
 import matplotlib.pyplot as plt    
 
-num_workers = 0
+num_workers = 3
 
 def main():
 
-    train = False
-    run_only = True
+    train = True
     
-    # Setup tabstop
-    print("        \033H")
-
     args = get_arguments()
     SEED = args.seed
     torch.manual_seed(SEED)
