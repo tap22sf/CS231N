@@ -37,14 +37,13 @@
     <Compile Include="loadtest.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="main.py" />
     <Compile Include="model\loss.py" />
     <Compile Include="model\metric.py" />
     <Compile Include="model\model.py" />
     <Compile Include="model\__init__.py" />
-    <Compile Include="trainer\train.py" />
-    <Compile Include="trainer\train_class.py" />
-    <Compile Include="trainer\__init__.py" />
+    <Compile Include="train\train.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="utils\util.py" />
     <Compile Include="utils\__init__.py" />
   </ItemGroup>
@@ -56,8 +55,7 @@
     <Folder Include="data_loader\__pycache__\" />
     <Folder Include="model\" />
     <Folder Include="model\__pycache__\" />
-    <Folder Include="trainer\" />
-    <Folder Include="trainer\__pycache__\" />
+    <Folder Include="train\" />
     <Folder Include="utils\" />
     <Folder Include="utils\__pycache__\" />
   </ItemGroup>
@@ -80,8 +78,6 @@
     <Content Include="model\__pycache__\model.cpython-37.pyc" />
     <Content Include="model\__pycache__\__init__.cpython-37.pyc" />
     <Content Include="README.md" />
-    <Content Include="trainer\__pycache__\train.cpython-37.pyc" />
-    <Content Include="trainer\__pycache__\__init__.cpython-37.pyc" />
     <Content Include="utils\__pycache__\util.cpython-37.pyc" />
     <Content Include="utils\__pycache__\__init__.cpython-37.pyc" />
   </ItemGroup>
