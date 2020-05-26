@@ -102,18 +102,22 @@ def write_json_file(content, fname):
         json.dump(content, handle, indent=4, sort_keys=False)
 
 
-def read_filepaths(file):
+def read_filepaths(file, num_samples):
     paths, labels = [], []
     with open(file, 'r') as f:
         lines = f.read().splitlines()
 
         for idx, line in enumerate(lines):
+            if num_samples and idx >= num_samples: break
+
             if ('/ c o' in line):
                 break
-            subjid, path, label = line.split(' ')
+            subjid, path, label,_ = line.split(' ')
 
             paths.append(path)
             labels.append(label)
+
+
     return paths, labels
 
 def select_model(args):

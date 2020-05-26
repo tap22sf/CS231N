@@ -6,17 +6,23 @@ import numpy as np
 from utils import read_filepaths
 from PIL import Image
 from torchvision import transforms
+import h5py
 
 class COVIDxDataset(Dataset):
     """
     Code for reading the COVIDxDataset
     """
 
-    def __init__(self, mode, n_classes=3, dataset_path='./datasets', dim=(224, 224)):
+    def __init__(self, mode, h5=False, n_classes=3, dataset_path='./datasets', dim=(224, 224), num_samples=None, use_transform=True):
         
         COVIDxDICT = {'pneumonia': 0, 'normal': 1, 'COVID-19': 2}
 
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+        null_transformer = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+
         train_transformer = transforms.Compose([
             transforms.Resize(256),
             transforms.RandomResizedCrop((224), scale=(0.5, 1.0)),
@@ -32,34 +38,65 @@ class COVIDxDataset(Dataset):
             normalize
         ])
 
-        
-        self.root = str(dataset_path) + '/' + mode + '/'
 
         self.CLASSES = n_classes
         self.dim = dim
+        self.h5 = h5
         self.COVIDxDICT = {'pneumonia': 0, 'normal': 1, 'COVID-19': 2}
-        testfile = str(dataset_path) + '/' + 'test_split_v2.txt'
-        trainfile = str(dataset_path) + '/' + 'train_split_v2.txt'
+
         if (mode == 'train'):
-            self.paths, self.labels = read_filepaths(trainfile)
             self.transform = train_transformer
         elif (mode == 'test'):
-            self.paths, self.labels = read_filepaths(testfile)
             self.transform = val_transformer
-        print("{} examples =  {}".format(mode, len(self.paths)))
-        self.mode = mode
-        
 
+        if not use_transform:
+            self.transform = null_transformer
+
+        self.mode = mode
+
+        # Load an h5 dataset
+        lend = 0
+        if h5:
+            hf = h5py.File(mode + '.h5', 'r')
+            self.data = hf['images']
+            self.labels = hf['labels']
+            self.len = len(self.data)
+
+        else:
+            self.root = str(dataset_path) + '/' + mode + '/'
+            testfile = str(dataset_path) + '/' + 'test_split_v3.txt'
+            trainfile = str(dataset_path) + '/' + 'train_split_v3.txt'
+
+            if (mode == 'train'):
+                self.paths, self.labels = read_filepaths(trainfile, num_samples)
+            elif (mode == 'test'):
+                self.paths, self.labels = read_filepaths(testfile, num_samples)
+            self.len = len(self.paths)
+
+        if num_samples and self.len > num_samples:
+            self.len = num_samples
+
+        print("{} examples =  {}".format(self.mode, self.len))
+        
     def __len__(self):
-        return len(self.paths)
+        return self.len
 
     def __getitem__(self, index):
         if torch.is_tensor(index):
             index = index.tolist()
+        
+        if self.h5:
+            d = self.data[index]
+            npimg = np.transpose(d,(1,2,0))
+            l = self.labels[index]
+            image_pil = Image.fromarray((npimg * 255).astype(np.uint8))
+            label_tensor = torch.tensor(l, dtype=torch.long)
 
-        image_tensor = self.load_image(self.root + self.paths[index], self.dim, augmentation=self.mode)
-        label_tensor = torch.tensor(self.COVIDxDICT[self.labels[index]], dtype=torch.long)
+        else:
+            image_pil = self.load_image(self.root + self.paths[index], self.dim)
+            label_tensor = torch.tensor(self.COVIDxDICT[self.labels[index]], dtype=torch.long)
 
+        image_tensor = self.transform(image_pil)
         return image_tensor, label_tensor
 
     def load_image(self, img_path, dim, augmentation='test'):
@@ -67,8 +104,5 @@ class COVIDxDataset(Dataset):
             print("IMAGE DOES NOT EXIST {}".format(img_path))
         image = Image.open(img_path).convert('RGB')
         image = image.resize(dim)
+        return image
 
-        # Data augmentation
-        image_tensor = self.transform(image)
-
-        return image_tensor

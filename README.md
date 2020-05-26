@@ -16,12 +16,12 @@ Significant works
 6. Datasets:
    * [Phase 2 RSNA Challenge]] https://www.kaggle.com/c/rsna-pneumonia-detection-challenge/data
 
+
 Major work Items
 ================
-1. Port model to Pytorch (from Keras) - Found Pytorch port done.
+1. Port model to Pytorch (from TF 1.0) - major cleanup
 2. Establish a baseline using existing model and other prediction techniques
 3. Data Augmentation
-   * Rotation
    * Scale
    * Contrast
    * Noise injection
@@ -32,8 +32,3 @@ Major work Items
 6. Write up literasture survey
 7. Preare report and Video
 
-Target Dates
-============
-1. Port by 5/15 - collab in github
-2. Data Augmentation infrastructure and first - pull data and add to private gitghub
-3. KNN for basesline, random Forest, logistic regression.

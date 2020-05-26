@@ -51,7 +51,7 @@ class CovidNet(nn.Module):
     def __init__(self, model='small', n_classes=3):
         super(CovidNet, self).__init__()
         filters = {
-            'pexp1_1': [64, 256],
+            'pexp1_1': [64, 256, 'pool'],
             'pexp1_2': [256, 256],
             'pexp1_3': [256, 256],
             'pexp2_1': [256, 512],
@@ -182,11 +182,9 @@ class CNN(nn.Module):
             self.cnn = models.resnet18(pretrained=True)
             self.cnn.fc = nn.Linear(512, classes)
         elif (model == 'resnext50_32x4d'):
-
             self.cnn = models.resnext50_32x4d(pretrained=True)
             self.cnn.classifier = nn.Linear(1280, classes)
         elif (model == 'mobilenet_v2'):
-
             self.cnn = models.mobilenet_v2(pretrained=True)
             self.cnn.classifier = nn.Linear(1280, classes)
 

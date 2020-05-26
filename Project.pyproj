@@ -31,6 +31,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="DataCoral.py" />
+    <Compile Include="data_loader\covidxdataset - Copy.py" />
     <Compile Include="data_loader\covidxdataset.py" />
     <Compile Include="data_loader\covid_ct_dataset.py" />
     <Compile Include="data_loader\__init__.py" />

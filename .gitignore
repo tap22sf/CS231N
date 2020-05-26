@@ -8,8 +8,11 @@ gold_save/
 runs/
 data/
 
+*h5
+
 # C extensions
 *.so
+
 
 # Distribution / packaging
 .Python

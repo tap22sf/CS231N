@@ -6,13 +6,18 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
 import matplotlib.pyplot as plt    
+import h5py
 
-num_workers = 3
+num_workers = 12
+num_workers = 0
 
 def main():
 
-    train = False
-    
+    trainme = True
+    reload_weights = False
+    save_h5 = False    
+    #save_h5 = True
+
     args = get_arguments()
     SEED = args.seed
     torch.manual_seed(SEED)
@@ -24,25 +29,62 @@ def main():
         torch.cuda.manual_seed(SEED)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # Load the models and generators
-    dataset, val_dataset, test_generator = initialize_datasets(args)
     
-    # Load from a model if not training
+    # Set the path for the dataset
+    args.root_path = 'G:/datasets/covidx_v3_data'
+    weight_path = './save/COVIDNet20200520_0709/COVIDNet_large_best_checkpoint.pt'
+
+    if save_h5:
+        args.h5 = False
+        dataset, val_dataset, test_generator = initialize_datasets(args, use_transform=False)
+        #dataset, val_dataset, test_generator = initialize_datasets(args,  train_size=10, val_size=100, use_transform=False)
+
+        # Save of the datasets as h5 is desired
+        for ds in (dataset, val_dataset, test_generator):
+            if ds: 
+                imgs =[]
+                labels = []
+                for n, imgTen in enumerate (ds):
+
+                    # Create an h5 version of the image
+                    image = imgTen[0].numpy()
+                    label = imgTen[1].numpy()
+                    imgs.append(image)
+                    labels.append(label)
+
+                imgs = np.array(imgs)
+                labels = np.array(labels)
+
+                # Create the dataset
+                hf = h5py.File(ds.mode+'.h5', 'w') 
+                hf.create_dataset('images', data=imgs)
+                hf.create_dataset('labels', data=labels)
+
+                hf.close()
+
+    # Load the h5 datasets if available
+    args.h5 = True
+    dataset, val_dataset, test_dataset = initialize_datasets(args)
+
+    # Relaod weights if desired
+    choices=('COVIDNet_small', 'resnet18', 'mobilenet_v2', 'densenet169', 'COVIDNet_large')
+    args.model = 'resnet18'
+    args.batch_size = 64
+    args.log_interval = 50
+
     model = select_model(args)
-    if not train:
-        path = './save/COVIDNet20200520_0709/COVIDNet_large_best_checkpoint.pt'
-        #path = './gold_save/COVIDNet_large_best_checkpoint.pt'
-        checkpoint  = torch.load(path)
+    if reload_weights:
+        print("Loading model with weights from: {}".format(weight_path))
+        checkpoint  = torch.load(weight_path)
         model.load_state_dict(checkpoint['state_dict'])
         
     model.to(device)
-    
     best_pred_loss = 1000.0
     
     print('Checkpoint folder ', args.save)
     if args.tensorboard and train:
         writer = SummaryWriter('./runs/' + util.datestr())
-        data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= True, num_workers = num_workers)
+        data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
         images, labels = next(iter(data_loader))
         writer.add_graph(model, images.to(device))
 
@@ -57,31 +99,32 @@ def main():
     else:
         writer = None
 
-    if train:
-
+    if trainme:
         best_pred_loss = 1000
         optimizer = select_optimizer(args, model)
         scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=1e-5, verbose=True)
+        train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
+        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
 
         for epoch in range(1, args.nEpochs + 1):
 
             # Train 1 epoch
-            train_metrics, writer_step = train2(model, args, device, writer, scheduler, optimizer, dataset, epoch)
+            train_metrics, writer_step = train(model, args, device, writer, scheduler, optimizer, train_loader, epoch)
 
             # Run Inference on val set
-            val_loss, confusion_matrix = inference (args, model, val_dataset, epoch, writer, device, writer_step)
+            val_loss, confusion_matrix = inference (args, model, val_loader, epoch, writer, device, writer_step)
             best_pred_loss = util.save_model(model, args, val_loss, epoch, best_pred_loss, confusion_matrix)
             scheduler.step(val_loss)
 
     # Just evaluate a trained model
     else:
-        inference (args, model, val_dataset, 1, writer, device, 0)
+        inference (args, model, val_loader, 1, writer, device, 0)
 
    
-def inference(args, model, val_dataset, epoch, writer, device, writer_step):
+def inference(args, model, val_loader, epoch, writer, device, writer_step):
 
     # Run Inference on val set
-    val_metrics, confusion_matrix = val2(args, model, val_dataset, epoch, writer, device)
+    val_metrics, confusion_matrix = val(args, model, val_loader, epoch, writer, device)
     val_loss = val_metrics.avg('loss')
     val_metrics.write_tb (writer_step)
 
@@ -94,7 +137,7 @@ def inference(args, model, val_dataset, epoch, writer, device, writer_step):
     return val_loss, confusion_matrix
 
 
-def train2(model, args, device, writer, scheduler, optimizer, dataset, epoch):
+def train(model, args, device, writer, scheduler, optimizer, data_loader, epoch):
     
     # Set train mode
     model.train()
@@ -104,20 +147,20 @@ def train2(model, args, device, writer, scheduler, optimizer, dataset, epoch):
     metrics = MetricTracker(*[m for m in metric_ftns], writer=writer, mode='train')
     metrics.reset()
 
-    data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= True, num_workers = num_workers)
-    
     for batch_idx, input_tensors in enumerate(data_loader):
         input_data, target = input_tensors[0].to(device), input_tensors[1].to(device)
 
-        optimizer.zero_grad()
+        # Forward
         output = model(input_data)
         loss = criterion(output, target)
+        correct, total, acc = accuracy(output, target)
+        metrics.update_all_metrics({'correct': correct, 'total': total, 'loss': loss.item(), 'accuracy': acc})
+
+        # Backward
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        correct, total, acc = accuracy(output, target)
-        metrics.update_all_metrics({'correct': correct, 'total': total, 'loss': loss.item(), 'accuracy': acc})
-    
         # Save TB stats
         writer_step = (epoch - 1) * len(data_loader) + batch_idx 
         if ((batch_idx+1) % args.log_interval == 0):
@@ -127,7 +170,7 @@ def train2(model, args, device, writer, scheduler, optimizer, dataset, epoch):
 
     return metrics, writer_step
 
-def val2(args, model, val_dataset, epoch, writer, device):
+def val(args, model, data_loader, epoch, writer, device):
     
     model.eval()
 
@@ -137,17 +180,17 @@ def val2(args, model, val_dataset, epoch, writer, device):
     metrics = MetricTracker(*[m for m in metric_ftns], writer=writer, mode='val')
     metrics.reset()
     
-    data_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, pin_memory= True, num_workers = num_workers)
-
     with torch.no_grad():
         for batch_idx, input_tensors in enumerate(data_loader):
             torch.cuda.empty_cache()
             input_data, target = input_tensors[0].to(device), input_tensors[1].to(device)
+            
+            # Forward
             output = model(input_data)
             loss = criterion(output, target)
+            correct, total, acc = accuracy(output, target)
             
             num_samples = batch_idx * args.batch_size + 1
-            correct, total, acc = accuracy(output, target)
             metrics.update_all_metrics({'correct': correct, 'total': total, 'loss': loss.item(), 'accuracy': acc})
             
             _, preds = torch.max(output, 1)
