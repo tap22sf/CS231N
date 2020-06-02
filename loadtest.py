@@ -8,13 +8,11 @@ import torchvision
 import matplotlib.pyplot as plt    
 import h5py
 
-num_workers = 12
+#num_workers = 12
 num_workers = 0
 
 def main():
 
-    trainme = True
-    reload_weights = False
     save_h5 = False    
     #save_h5 = True
 
@@ -25,6 +23,7 @@ def main():
     torch.backends.cudnn.benchmark = False
     np.random.seed(SEED)
 
+    if torch.cuda.is_available():
     if torch.cuda.is_available():
         torch.cuda.manual_seed(SEED)
 
@@ -64,88 +63,114 @@ def main():
 
     # Load the h5 datasets if available
     args.h5 = True
+    #args.h5 = False
+#    dataset, val_dataset, test_dataset = initialize_datasets(args, train_size=1000, val_size=100)
     dataset, val_dataset, test_dataset = initialize_datasets(args)
-
-    # Relaod weights if desired
-    choices=('COVIDNet_small', 'resnet18', 'mobilenet_v2', 'densenet169', 'COVIDNet_large')
-    args.model = 'resnet18'
-    args.batch_size = 64
-    args.log_interval = 50
-
-    model = select_model(args)
-    if reload_weights:
-        print("Loading model with weights from: {}".format(weight_path))
-        checkpoint  = torch.load(weight_path)
-        model.load_state_dict(checkpoint['state_dict'])
-        
-    model.to(device)
-    best_pred_loss = 1000.0
     
-    print('Checkpoint folder ', args.save)
-    if args.tensorboard and train:
-        writer = SummaryWriter('./runs/' + util.datestr())
-        data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
-        images, labels = next(iter(data_loader))
-        writer.add_graph(model, images.to(device))
+    # Reload weights if desired
+    args.batch_size = 28
+    args.log_interval = 100
+    args.nEpochs = 10
 
-        img_grid = torchvision.utils.make_grid(images)
+    test_list = [   
+        [True, False, 'COVIDNet_small',  False, None],
+        [True, False, 'COVIDNet_large',  False, None],
+        [True, True,  'resnet18',        False, None],
+        [True, True,  'mobilenet2',      False, None],
+        [True, True,  'densenet169',     False, None],
+        [True, True,  'resneXt',         False, None]
+    ]
+
+    # Iterate over tests
+    for trainme, transfer, model_name, reload_weights, weight_path in test_list:
+        if transfer: 
+            code = "_Transfer"
+        else:
+            code = ""
+    
+        id = model_name+code + util.datestr()
+
+        model = select_model(model_name, args.classes)
+        if reload_weights:
+            print("Loading model with weights from: {}".format(weight_path))
+            checkpoint  = torch.load(weight_path)
+            model.load_state_dict(checkpoint['state_dict'])
         
-        # show images
-        newimg = matplotlib_imshow(img_grid, one_channel=True)
-
-        ## write to tensorboard
-        writer.add_image('Xrays',img_grid)
+        model.to(device)
+        best_pred_loss = 1000.0
         
-    else:
-        writer = None
+        # Freeze model is transfer learning
+        if transfer:
+            set_parameter_requires_grad(model)
 
-    if trainme:
-        best_pred_loss = 1000
-        optimizer = select_optimizer(args, model)
-        scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=1e-5, verbose=True)
-        train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
-        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
+        print('Checkpoint folder ', args.save)
+        if args.tensorboard and train:
+            writer = SummaryWriter('./runs/' + id)
+            data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
+            images, labels = next(iter(data_loader))
+            writer.add_graph(model, images.to(device))
 
-        for epoch in range(1, args.nEpochs + 1):
+            img_grid = torchvision.utils.make_grid(images)
+        
+             # show images
+            newimg = matplotlib_imshow(img_grid, one_channel=True)
 
-            # Train 1 epoch
-            train_metrics, writer_step = train(model, args, device, writer, scheduler, optimizer, train_loader, epoch)
+            ## write to tensorboard
+            writer.add_image('Xrays',img_grid)
+        
+        else:
+            writer = None
 
-            # Run Inference on val set
-            val_loss, confusion_matrix = inference (args, model, val_loader, epoch, writer, device, writer_step)
-            best_pred_loss = util.save_model(model, args, val_loss, epoch, best_pred_loss, confusion_matrix)
-            scheduler.step(val_loss)
+        if trainme:
+            best_pred_loss = 1000
+            optimizer = select_optimizer(args, model)
+            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=1e-5, verbose=True)
+            train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
+            val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
 
-    # Just evaluate a trained model
-    else:
-        inference (args, model, val_loader, 1, writer, device, 0)
+            for epoch in range(1, args.nEpochs + 1):
+
+                # Train 1 epoch
+                train_metrics, writer_step = train(model, args, device, writer, scheduler, optimizer, train_loader, epoch)
+
+                # Run Inference on val set
+                val_loss, confusion_matrix = inference (args, model, val_loader, epoch, writer, device, writer_step)
+                best_pred_loss = util.save_model(model, args, val_loss, epoch, best_pred_loss, confusion_matrix)
+                scheduler.step(val_loss)
+
+        # Just evaluate a trained model
+        else:
+            inference (args, model, val_loader, 1, writer, device, 0)
 
    
 def inference(args, model, val_loader, epoch, writer, device, writer_step):
 
     # Run Inference on val set
-    val_metrics, confusion_matrix = val(args, model, val_loader, epoch, writer, device)
-    val_loss = val_metrics.avg('loss')
+    val_metrics, cm  = val(args, model, val_loader, epoch, writer, device)
     val_metrics.write_tb (writer_step)
 
     # Print a summary message
     print_summary(args, epoch, val_metrics)
 
     # Print the confusion matrix
-    print('Confusion Matrix\n{}'.format(confusion_matrix.cpu().numpy()))
+    print('Confusion Matrix\n{}'.format(cm.cpu().numpy()))
 
-    return val_loss, confusion_matrix
+    val_loss = val_metrics.avg('loss')
+
+    return val_loss, cm
 
 
 def train(model, args, device, writer, scheduler, optimizer, data_loader, epoch):
     
     # Set train mode
     model.train()
-    criterion = nn.CrossEntropyLoss(reduction='mean')
 
-    metric_ftns = ['loss', 'correct', 'total', 'accuracy']
+    criterion = nn.CrossEntropyLoss(reduction='mean')
+    metric_ftns = ['loss', 'correct', 'total', 'accuracy', 'sens', 'ppv']
     metrics = MetricTracker(*[m for m in metric_ftns], writer=writer, mode='train')
     metrics.reset()
+    
+    cm = torch.zeros(args.classes, args.classes)
 
     for batch_idx, input_tensors in enumerate(data_loader):
         input_data, target = input_tensors[0].to(device), input_tensors[1].to(device)
@@ -153,7 +178,9 @@ def train(model, args, device, writer, scheduler, optimizer, data_loader, epoch)
         # Forward
         output = model(input_data)
         loss = criterion(output, target)
+
         correct, total, acc = accuracy(output, target)
+        update_confusion_matrix(cm, output, target)
         metrics.update_all_metrics({'correct': correct, 'total': total, 'loss': loss.item(), 'accuracy': acc})
 
         # Backward
@@ -164,9 +191,17 @@ def train(model, args, device, writer, scheduler, optimizer, data_loader, epoch)
         # Save TB stats
         writer_step = (epoch - 1) * len(data_loader) + batch_idx 
         if ((batch_idx+1) % args.log_interval == 0):
+
+            # Calculate confusion for this bucket
+            ppv, sens = update_confusion_calc(cm)
+            metrics.update_all_metrics({'sens': sens, 'ppv': ppv})
+            cm = torch.zeros(args.classes, args.classes)
+
             metrics.write_tb (writer_step)
+
             num_samples = batch_idx * args.batch_size
             print_stats(args, epoch, num_samples, data_loader, metrics)
+
 
     return metrics, writer_step
 
@@ -175,11 +210,12 @@ def val(args, model, data_loader, epoch, writer, device):
     model.eval()
 
     criterion = nn.CrossEntropyLoss(reduction='mean')
-    confusion_matrix = torch.zeros(args.classes, args.classes)
-    metric_ftns = ['loss', 'correct', 'total', 'accuracy']
+    metric_ftns = ['loss', 'correct', 'total', 'accuracy', 'ppv', 'sens']
     metrics = MetricTracker(*[m for m in metric_ftns], writer=writer, mode='val')
     metrics.reset()
     
+    cm = torch.zeros(args.classes, args.classes)
+
     with torch.no_grad():
         for batch_idx, input_tensors in enumerate(data_loader):
             torch.cuda.empty_cache()
@@ -188,17 +224,17 @@ def val(args, model, data_loader, epoch, writer, device):
             # Forward
             output = model(input_data)
             loss = criterion(output, target)
-            correct, total, acc = accuracy(output, target)
-            
-            num_samples = batch_idx * args.batch_size + 1
-            metrics.update_all_metrics({'correct': correct, 'total': total, 'loss': loss.item(), 'accuracy': acc})
-            
-            _, preds = torch.max(output, 1)
 
-            for t, p in zip(target.cpu().view(-1), preds.cpu().view(-1)):
-                confusion_matrix[t.long(), p.long()] += 1
-         
-    return metrics, confusion_matrix
+            correct, total, acc = accuracy(output, target)
+            update_confusion_matrix(cm, output, target)
+
+            # Update the metrics record
+            metrics.update_all_metrics({'correct': correct, 'total': total, 'loss': loss.item(), 'accuracy': acc})
+
+        ppv, sens = update_confusion_calc(cm)
+        metrics.update_all_metrics({'sens': sens, 'ppv': ppv})
+
+    return metrics, cm
 
 
 def get_arguments():
@@ -243,6 +279,16 @@ def matplotlib_imshow(img, one_channel=False):
     #plt.show()
     return img
 
+def set_parameter_requires_grad(model):
+    for cntr,child in enumerate(model.children()):
+        for name, param in child.named_parameters():
+            if param.requires_grad:
+                if not 'fc' in name:
+                    #print ("Freezing : {}".format(name))
+                    param.requires_grad = False
+                else:
+                    print ("Training : {}".format(name))
+
 
 # Multi-processor safe:)
 if __name__ == '__main__':
@@ -250,7 +296,7 @@ if __name__ == '__main__':
     import utils.util as util
     from train.train import initialize_datasets
     from data_loader.covidxdataset import COVIDxDataset
-    from model.metric import accuracy
+    from model.metric import accuracy, update_confusion_calc, update_confusion_matrix
 
     main()
 

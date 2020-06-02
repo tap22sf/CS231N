@@ -120,13 +120,13 @@ def read_filepaths(file, num_samples):
 
     return paths, labels
 
-def select_model(args):
-    if args.model == 'COVIDNet_small':
-        return CovidNet('small', n_classes=args.classes)
-    elif args.model == 'COVIDNet_large':
-        return CovidNet('large', n_classes=args.classes)
-    elif args.model in ['resnet18', 'mobilenet2', 'densenet169', 'resneXt']:
-        return CNN(args.classes, args.model)
+def select_model(name, classes):
+    if name == 'COVIDNet_small':
+        return CovidNet('small', n_classes=classes)
+    elif name == 'COVIDNet_large':
+        return CovidNet('large', n_classes=classes)
+    elif name in ['resnet18', 'mobilenet2', 'densenet169', 'resneXt']:
+        return CNN(classes, name)
 
 
 def select_optimizer(args, model):
@@ -145,31 +145,21 @@ def read_txt(txt_path):
 
 
 def print_stats(args, epoch, num_samples, trainloader, metrics):
-    print("Epoch:{:2d}\tSample:{:5d}/{:5d}\tTrain Loss:  {:.4f}\tTrain Accuracy:  {:.2f}".format(epoch,
+    print("Epoch:{:2d}\tSample:{:5d}/{:5d}\tTrain Loss:  {:.4f}\tTrain PPV:{:.2f}\tTrain Sens:{:.2f}\t\tTrain Accuracy:  {:.2f}".format(epoch,
                                                                                      num_samples,
                                                                                      len(trainloader) * args.batch_size,
                                                                                      metrics.avg('loss'),
+                                                                                     metrics.avg('ppv'),
+                                                                                     metrics.avg('sens'),
                                                                                      metrics.avg('accuracy')))
 
 def print_summary(args, epoch, metrics):
-    print("\nSUMMARY EPOCH:{:2d}\tVal Loss:{:.4f}\t\t Val Accuracy:{:.2f}\n".format(epoch,
+    print("\nSUMMARY EPOCH:{:2d}\tVal Loss:{:.4f}\tVal PPV:{:.2f}\tVal Sens:{:.2f}\tVal Accuracy:{:.2f}\n".format(epoch,
                                                                                     metrics.avg('loss'),
+                                                                                    metrics.avg('ppv'),
+                                                                                    metrics.avg('sens'),
                                                                                     metrics.avg('accuracy')))
 
-
-# TODO
-def confusion_matrix(nb_classes):
-    confusion_matrix = torch.zeros(nb_classes, nb_classes)
-    with torch.no_grad():
-        for i, (inputs, classes) in enumerate(dataloaders['val']):
-            inputs = inputs.to(device)
-            classes = classes.to(device)
-            outputs = model_ft(inputs)
-            _, preds = torch.max(outputs, 1)
-            for t, p in zip(classes.view(-1), preds.view(-1)):
-                confusion_matrix[t.long(), p.long()] += 1
-
-    print(confusion_matrix)
 
 
 class MetricTracker:
@@ -200,6 +190,8 @@ class MetricTracker:
             d = dict(self._data.average)
             self.writer.add_scalar(self.mode + 'Loss', d['loss'], index)
             self.writer.add_scalar(self.mode + 'Accuracy', d['accuracy'], index)
+            self.writer.add_scalar(self.mode + 'Sensitivity', d['sens'], index)
+            self.writer.add_scalar(self.mode + 'PPV', d['ppv'], index)
 
     def avg(self, key):
         return self._data.average[key]
