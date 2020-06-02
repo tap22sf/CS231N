@@ -24,7 +24,6 @@ def main():
     np.random.seed(SEED)
 
     if torch.cuda.is_available():
-    if torch.cuda.is_available():
         torch.cuda.manual_seed(SEED)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -64,11 +63,11 @@ def main():
     # Load the h5 datasets if available
     args.h5 = True
     #args.h5 = False
-#    dataset, val_dataset, test_dataset = initialize_datasets(args, train_size=1000, val_size=100)
+#    dataset, val_dataset, test_dataset = initialize_datasets(args, train_size=3000, val_size=100)
     dataset, val_dataset, test_dataset = initialize_datasets(args)
     
     # Reload weights if desired
-    args.batch_size = 28
+    args.batch_size = 32
     args.log_interval = 100
     args.nEpochs = 10
 
@@ -99,7 +98,7 @@ def main():
         model.to(device)
         best_pred_loss = 1000.0
         
-        # Freeze model is transfer learning
+        # Freeze model if transfer learning
         if transfer:
             set_parameter_requires_grad(model)
 
@@ -132,7 +131,7 @@ def main():
 
                 # Train 1 epoch
                 train_metrics, writer_step = train(model, args, device, writer, scheduler, optimizer, train_loader, epoch)
-
+                
                 # Run Inference on val set
                 val_loss, confusion_matrix = inference (args, model, val_loader, epoch, writer, device, writer_step)
                 best_pred_loss = util.save_model(model, args, val_loss, epoch, best_pred_loss, confusion_matrix)
@@ -169,12 +168,13 @@ def train(model, args, device, writer, scheduler, optimizer, data_loader, epoch)
     metric_ftns = ['loss', 'correct', 'total', 'accuracy', 'sens', 'ppv']
     metrics = MetricTracker(*[m for m in metric_ftns], writer=writer, mode='train')
     metrics.reset()
-    
+
     cm = torch.zeros(args.classes, args.classes)
 
     for batch_idx, input_tensors in enumerate(data_loader):
-        input_data, target = input_tensors[0].to(device), input_tensors[1].to(device)
 
+        input_data, target = input_tensors[0].to(device), input_tensors[1].to(device)
+    
         # Forward
         output = model(input_data)
         loss = criterion(output, target)
