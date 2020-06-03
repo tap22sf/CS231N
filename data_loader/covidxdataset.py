@@ -56,12 +56,12 @@ class COVIDxDataset(Dataset):
 
         # Load an h5 dataset
         lend = 0
-        if h5:
-            hf = h5py.File(mode + '.h5', 'r')
-            self.data = hf['images']
-            self.labels = hf['labels']
-            self.len = len(self.data)
+        self.h5filename = mode + '.h5'
 
+        if h5:
+            with h5py.File(self.h5filename, 'r') as db:
+                lens=len(db['labels'])
+                self.len = lens 
         else:
             self.root = str(dataset_path) + '/' + mode + '/'
             testfile = str(dataset_path) + '/' + 'test_split_v3.txt'
@@ -79,6 +79,11 @@ class COVIDxDataset(Dataset):
         print("{} examples =  {}".format(self.mode, self.len))
         
     def __len__(self):
+        if self.h5:
+            with h5py.File(self.h5filename, 'r') as db:
+                lens=len(db['labels'])
+                return lens 
+            
         return self.len
 
     def __getitem__(self, index):
@@ -86,11 +91,14 @@ class COVIDxDataset(Dataset):
             index = index.tolist()
         
         if self.h5:
-            d = self.data[index]
-            npimg = np.transpose(d,(1,2,0))
-            l = self.labels[index]
-            image_pil = Image.fromarray((npimg * 255).astype(np.uint8))
-            label_tensor = torch.tensor(l, dtype=torch.long)
+            with h5py.File(self.h5filename, 'r') as hf:
+
+                d = hf['images'][index]
+                l = hf['labels'][index]
+
+                npimg = np.transpose(d,(1,2,0))
+                image_pil = Image.fromarray((npimg * 255).astype(np.uint8))
+                label_tensor = torch.tensor(l, dtype=torch.long)
 
         else:
             image_pil = self.load_image(self.root + self.paths[index], self.dim)

@@ -43,6 +43,7 @@ class PEXP(nn.Module):
                                                kernel_size=1),
                                      nn.Conv2d(in_channels=n_input // 2, out_channels=n_out, kernel_size=1))
 
+
     def forward(self, x):
         return self.network(x)
 
@@ -78,7 +79,7 @@ class CovidNet(nn.Module):
                 self.add_module(key, PEXP(filters[key][0], filters[key][1]))
 
         if (model == 'large'):
-
+            self.freezeLayerCnt = 9
             self.add_module('conv1_1x1', nn.Conv2d(in_channels=64, out_channels=256, kernel_size=1))
             self.add_module('conv2_1x1', nn.Conv2d(in_channels=256, out_channels=512, kernel_size=1))
             self.add_module('conv3_1x1', nn.Conv2d(in_channels=512, out_channels=1024, kernel_size=1))
@@ -86,7 +87,9 @@ class CovidNet(nn.Module):
 
             self.__forward__ = self.forward_large_net
         else:
+            self.freezeLayerCnt = 9
             self.__forward__ = self.forward_small_net
+    
         self.add_module('flatten', Flatten())
         self.add_module('fc1', nn.Linear(7 * 7 * 2048, 1024))
 
@@ -178,15 +181,24 @@ class CovidNet(nn.Module):
 class CNN(nn.Module):
     def __init__(self, classes, model='resnet18'):
         super(CNN, self).__init__()
+        self.freezeLayerCnt = 100
+
         if (model == 'resnet18'):
             self.cnn = models.resnet18(pretrained=True)
             self.cnn.fc = nn.Linear(512, classes)
+            self.freezeLayerCnt = 53
         elif (model == 'resnext50_32x4d'):
             self.cnn = models.resnext50_32x4d(pretrained=True)
-            self.cnn.classifier = nn.Linear(1280, classes)
+            self.cnn.fc = nn.Linear(2048, classes)
+            self.freezeLayerCnt = 149
         elif (model == 'mobilenet_v2'):
             self.cnn = models.mobilenet_v2(pretrained=True)
             self.cnn.classifier = nn.Linear(1280, classes)
-
+            self.freezeLayerCnt = 152
+        elif (model == 'densenet169'):
+            self.cnn = models.densenet169(pretrained=True)
+            self.cnn.classifier = nn.Linear(1664, classes)
+            self.freezeLayerCnt = 311
     def forward(self, x):
-        return self.cnn(x)
+        x = self.cnn(x)
+        return x

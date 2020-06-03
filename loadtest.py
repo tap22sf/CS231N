@@ -8,8 +8,8 @@ import torchvision
 import matplotlib.pyplot as plt    
 import h5py
 
-#num_workers = 12
-num_workers = 0
+num_workers = 8
+#num_workers = 0
 
 def main():
 
@@ -67,21 +67,21 @@ def main():
     dataset, val_dataset, test_dataset = initialize_datasets(args)
     
     # Reload weights if desired
-    args.batch_size = 32
-    args.log_interval = 100
-    args.nEpochs = 10
+    args.batch_size = 256
+    args.log_interval = 10
+    args.nEpochs = 100
 
     test_list = [   
-        [True, False, 'COVIDNet_small',  False, None],
-        [True, False, 'COVIDNet_large',  False, None],
-        [True, True,  'resnet18',        False, None],
-        [True, True,  'mobilenet2',      False, None],
-        [True, True,  'densenet169',     False, None],
-        [True, True,  'resneXt',         False, None]
+        #[True, False, 'COVIDNet_small',  False, None,20],
+        #[True, False, 'COVIDNet_large',  False, None,20],
+        #[True, True,  'resnet18',        False, None, 100],
+        [True, True,  'mobilenet_v2',    False, None, 100],
+        [True, True,  'densenet169',     False, None, 100],
+        [True, True,  'resnext50_32x4d', False, None, 100]
     ]
 
     # Iterate over tests
-    for trainme, transfer, model_name, reload_weights, weight_path in test_list:
+    for trainme, transfer, model_name, reload_weights, weight_path, args.nEpochs in test_list:
         if transfer: 
             code = "_Transfer"
         else:
@@ -96,6 +96,7 @@ def main():
             model.load_state_dict(checkpoint['state_dict'])
         
         model.to(device)
+        #print(model)
         best_pred_loss = 1000.0
         
         # Freeze model if transfer learning
@@ -123,7 +124,7 @@ def main():
         if trainme:
             best_pred_loss = 1000
             optimizer = select_optimizer(args, model)
-            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=1e-5, verbose=True)
+            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=1.5e-5, verbose=True)
             train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
             val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
 
@@ -280,15 +281,18 @@ def matplotlib_imshow(img, one_channel=False):
     return img
 
 def set_parameter_requires_grad(model):
-    for cntr,child in enumerate(model.children()):
-        for name, param in child.named_parameters():
-            if param.requires_grad:
-                if not 'fc' in name:
-                    #print ("Freezing : {}".format(name))
-                    param.requires_grad = False
-                else:
-                    print ("Training : {}".format(name))
-
+    frozen = 0
+    
+    for cnt, (name, param) in enumerate(model.named_parameters()):
+        if param.requires_grad:
+            if cnt <= model.freezeLayerCnt:
+                print ("{} - Freezing : {}".format(cnt,name))
+                param.requires_grad = False
+                frozen += 1
+            else:
+                print ("{} - Training : {}".format(cnt, name))
+            
+    print ("Total Params: {}\tFrozen Params: {}".format (cnt, frozen))
 
 # Multi-processor safe:)
 if __name__ == '__main__':

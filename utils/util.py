@@ -125,7 +125,7 @@ def select_model(name, classes):
         return CovidNet('small', n_classes=classes)
     elif name == 'COVIDNet_large':
         return CovidNet('large', n_classes=classes)
-    elif name in ['resnet18', 'mobilenet2', 'densenet169', 'resneXt']:
+    elif name in ['resnet18', 'mobilenet_v2', 'densenet169', 'resnext50_32x4d']:
         return CNN(classes, name)
 
 
