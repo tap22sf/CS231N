@@ -8,7 +8,7 @@ import torchvision
 import matplotlib.pyplot as plt    
 import h5py
 
-num_workers = 8
+num_workers = 2
 #num_workers = 0
 
 def main():
@@ -72,16 +72,16 @@ def main():
     args.nEpochs = 100
 
     test_list = [   
-        #[True, False, 'COVIDNet_small',  False, None,20],
-        #[True, False, 'COVIDNet_large',  False, None,20],
-        #[True, True,  'resnet18',        False, None, 100],
-        [True, True,  'mobilenet_v2',    False, None, 100],
-        [True, True,  'densenet169',     False, None, 100],
-        [True, True,  'resnext50_32x4d', False, None, 100]
+        #[True, False, 'COVIDNet_small',  False, None, 100, 36, 50, 5e-5],
+        [True, False, 'COVIDNet_large',  False, None, 100, 28, 50, 5e-5],
+        #[True, True,  'resnet18',        False, None, 100, 256, 50, 2e-5],
+        #[True, True,  'mobilenet_v2',    False, None, 100, 256, 50, 2e-5],
+        #[True, True,  'densenet169',     False, None, 100, 256, 50, 2e-5],
+        #[True, True,  'resnext50_32x4d', False, None, 100, 256, 50, 2e-5]
     ]
 
     # Iterate over tests
-    for trainme, transfer, model_name, reload_weights, weight_path, args.nEpochs in test_list:
+    for trainme, transfer, model_name, reload_weights, weight_path, args.nEpochs, args.batch_size, args.log_interval, args.lr in test_list:
         if transfer: 
             code = "_Transfer"
         else:
@@ -124,7 +124,7 @@ def main():
         if trainme:
             best_pred_loss = 1000
             optimizer = select_optimizer(args, model)
-            scheduler = ReduceLROnPlateau(optimizer, factor=0.5, patience=2, min_lr=1.5e-5, verbose=True)
+            scheduler = ReduceLROnPlateau(optimizer, factor=0.1, patience=4, min_lr=1.5e-5, verbose=True)
             train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
             val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
 

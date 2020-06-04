@@ -5,7 +5,6 @@ __pycache__/
 
 save/
 gold_save/
-runs/
 data/
 
 *h5
