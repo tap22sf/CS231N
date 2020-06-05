@@ -1,0 +1,17 @@
+{
+  "batch_size": 256,
+  "log_interval": 50,
+  "dataset_name": "COVIDx",
+  "nEpochs": 100,
+  "seed": 123,
+  "classes": 3,
+  "lr": 2e-05,
+  "weight_decay": 1e-07,
+  "tensorboard": true,
+  "resume": "",
+  "model": "COVIDNet_large",
+  "opt": "adam",
+  "root_path": "G:/datasets/covidx_v3_data",
+  "save": "./save",
+  "h5": true
+}

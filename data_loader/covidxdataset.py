@@ -43,7 +43,8 @@ class COVIDxDataset(Dataset):
         self.dim = dim
         self.h5 = h5
         self.COVIDxDICT = {'pneumonia': 0, 'normal': 1, 'COVID-19': 2}
-
+        self.man_samples = num_samples
+        
         if (mode == 'train'):
             self.transform = train_transformer
         elif (mode == 'test'):
@@ -72,17 +73,19 @@ class COVIDxDataset(Dataset):
             elif (mode == 'test'):
                 self.paths, self.labels = read_filepaths(testfile, num_samples)
             self.len = len(self.paths)
-
-        if num_samples and self.len > num_samples:
-            self.len = num_samples
-
+        
+        if self.man_samples and self.len > self.man_samples:
+            self.len = self.man_samples
+            
         print("{} examples =  {}".format(self.mode, self.len))
         
     def __len__(self):
         if self.h5:
             with h5py.File(self.h5filename, 'r') as db:
-                lens=len(db['labels'])
-                return lens 
+                self.len=len(db['labels'])
+        
+        if self.man_samples and self.len > self.man_samples:
+            self.len = self.man_samples
             
         return self.len
 

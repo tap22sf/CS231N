@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import h5py
 
 num_workers = 2
-#num_workers = 0
+num_workers = 0
 
 def main():
 
@@ -63,21 +63,22 @@ def main():
     # Load the h5 datasets if available
     args.h5 = True
     #args.h5 = False
-#    dataset, val_dataset, test_dataset = initialize_datasets(args, train_size=3000, val_size=100)
+    #dataset, val_dataset, test_dataset = initialize_datasets(args, train_size=300, val_size=100)
     dataset, val_dataset, test_dataset = initialize_datasets(args)
     
     # Reload weights if desired
     args.batch_size = 256
     args.log_interval = 10
     args.nEpochs = 100
+    args.nEpochs = 3
 
     test_list = [   
         #[True, False, 'COVIDNet_small',  False, None, 100, 36, 50, 5e-5],
-        [True, False, 'COVIDNet_large',  False, None, 100, 28, 50, 5e-5],
+        #[True, False, 'COVIDNet_large',  False, None, 100, 28, 50, 5e-5],
         #[True, True,  'resnet18',        False, None, 100, 256, 50, 2e-5],
-        #[True, True,  'mobilenet_v2',    False, None, 100, 256, 50, 2e-5],
-        #[True, True,  'densenet169',     False, None, 100, 256, 50, 2e-5],
-        #[True, True,  'resnext50_32x4d', False, None, 100, 256, 50, 2e-5]
+        [True, True,  'mobilenet_v2',    False, None, 100, 256, 50, 2e-5],
+        [True, True,  'densenet169',     False, None, 100, 256, 50, 2e-5],
+        [True, True,  'resnext50_32x4d', False, None, 100, 256, 50, 2e-5]
     ]
 
     # Iterate over tests
@@ -97,13 +98,11 @@ def main():
         
         model.to(device)
         #print(model)
-        best_pred_loss = 1000.0
         
         # Freeze model if transfer learning
         if transfer:
             set_parameter_requires_grad(model)
 
-        print('Checkpoint folder ', args.save)
         if args.tensorboard and train:
             writer = SummaryWriter('./runs/' + id)
             data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
@@ -112,7 +111,7 @@ def main():
 
             img_grid = torchvision.utils.make_grid(images)
         
-             # show images
+            # show images
             newimg = matplotlib_imshow(img_grid, one_channel=True)
 
             ## write to tensorboard
@@ -122,21 +121,19 @@ def main():
             writer = None
 
         if trainme:
-            best_pred_loss = 1000
+            best_score = 0
             optimizer = select_optimizer(args, model)
-            scheduler = ReduceLROnPlateau(optimizer, factor=0.1, patience=4, min_lr=1.5e-5, verbose=True)
             train_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
             val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
 
             for epoch in range(1, args.nEpochs + 1):
 
                 # Train 1 epoch
-                train_metrics, writer_step = train(model, args, device, writer, scheduler, optimizer, train_loader, epoch)
+                train_metrics, writer_step = train(model, args, device, writer,  optimizer, train_loader, epoch)
                 
                 # Run Inference on val set
-                val_loss, confusion_matrix = inference (args, model, val_loader, epoch, writer, device, writer_step)
-                best_pred_loss = util.save_model(model, args, val_loss, epoch, best_pred_loss, confusion_matrix)
-                scheduler.step(val_loss)
+                val_score, confusion_matrix = inference (args, model, val_loader, epoch, writer, device, writer_step)
+                best_score = util.save_model(model, id, args, val_score, epoch, best_score, confusion_matrix)
 
         # Just evaluate a trained model
         else:
@@ -155,12 +152,12 @@ def inference(args, model, val_loader, epoch, writer, device, writer_step):
     # Print the confusion matrix
     print('Confusion Matrix\n{}'.format(cm.cpu().numpy()))
 
-    val_loss = val_metrics.avg('loss')
+    val_score = val_metrics.avg('sens') *  val_metrics.avg('ppv') 
 
-    return val_loss, cm
+    return val_score, cm
 
 
-def train(model, args, device, writer, scheduler, optimizer, data_loader, epoch):
+def train(model, args, device, writer, optimizer, data_loader, epoch):
     
     # Set train mode
     model.train()
@@ -260,7 +257,7 @@ def get_arguments():
                         choices=('sgd', 'adam', 'rmsprop'))
     parser.add_argument('--root_path', type=str, default='G:/combinedDataset/data',
                         help='path to dataset ')
-    parser.add_argument('--save', type=str, default='./save/COVIDNet' + util.datestr(),
+    parser.add_argument('--save', type=str, default='./save',
                         help='path to checkpoint save directory ')
     args = parser.parse_args()
     return args

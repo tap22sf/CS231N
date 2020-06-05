@@ -51,34 +51,32 @@ def datestr():
     return '{}{:02}{:02}_{:02}{:02}'.format(now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min)
 
 
-def save_checkpoint(state, is_best, path, filename='last'):
+def save_checkpoint(state, path, filename='last'):
     name = os.path.join(path, filename + '_checkpoint.pt')
     torch.save(state, name)
 
 
-def save_model(model, args, loss, epoch, best_pred_loss, confusion_matrix):
+def save_model(model, id, args, score, epoch, best_score, confusion_matrix):
     
-    save_path = args.save
+    save_path = args.save + '/' + id 
     make_dirs(save_path)
 
     with open(save_path + '/training_arguments.txt', 'w') as f:
         json.dump(args.__dict__, f, indent=2)
 
     is_best = False
-    if loss < best_pred_loss:
+    if score > best_score:
         is_best = True
-        best_pred_loss = loss
+        best_score = score
         save_checkpoint({'epoch': epoch,
                          'state_dict': model.state_dict()},
-                        is_best, save_path, args.model + "_best")
-        np.save(save_path + 'best_confusion_matrix.npy', confusion_matrix.cpu().numpy())
+                        save_path, "best")
+        np.savetxt(save_path + '/best_confusion_matrix.csv', confusion_matrix.cpu().numpy(), delimiter=',')
 
     else:
-        save_checkpoint({'epoch': epoch,
-                         'state_dict': model.state_dict()},
-                        False, save_path, args.model + "_last")
+        save_checkpoint({'epoch': epoch, 'state_dict': model.state_dict()},  save_path, "last")
 
-    return best_pred_loss
+    return best_score
 
 
 def make_dirs(path):
