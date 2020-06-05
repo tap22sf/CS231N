@@ -13,6 +13,11 @@ num_workers = 0
 
 def main():
 
+    plt.rcParams['figure.figsize'] = (10.0, 8.0) # set default size of plots
+    plt.rcParams['image.interpolation'] = 'nearest'
+    plt.rcParams['image.cmap'] = 'gray'
+
+
     save_h5 = False    
     #save_h5 = True
 
@@ -76,9 +81,13 @@ def main():
         #[True, False, 'COVIDNet_small',  False, None, 100, 36, 50, 5e-5],
         #[True, False, 'COVIDNet_large',  False, None, 100, 28, 50, 5e-5],
         #[True, True,  'resnet18',        False, None, 100, 256, 50, 2e-5],
-        [True, True,  'mobilenet_v2',    False, None, 100, 256, 50, 2e-5],
-        [True, True,  'densenet169',     False, None, 100, 256, 50, 2e-5],
-        [True, True,  'resnext50_32x4d', False, None, 100, 256, 50, 2e-5]
+        #[True, True,  'mobilenet_v2',    False, None, 100, 256, 50, 2e-5],
+        #[True, True,  'densenet169',     False, None, 100, 256, 50, 2e-5],
+        #[True, True,  'resnext50_32x4d', False, None, 100, 256, 50, 2e-5]
+        
+        # Run Inference only
+        #[False, False,  'resnext50_32x4d', True, "F:/Stanford/CS231N/Project/CS231N/save/resnext50_32x4d_Transfer20200605_0720/best_checkpoint.pt", 100, 16, 50, 2e-5]
+        [False, False,  'densenet169', True,     "F:/Stanford/CS231N/Project/CS231N/save/densenet169_Transfer20200605_0127/best_checkpoint.pt", 100, 32, 50, 2e-5]
     ]
 
     # Iterate over tests
@@ -103,7 +112,7 @@ def main():
         if transfer:
             set_parameter_requires_grad(model)
 
-        if args.tensorboard and train:
+        if args.tensorboard and trainme:
             writer = SummaryWriter('./runs/' + id)
             data_loader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
             images, labels = next(iter(data_loader))
@@ -137,8 +146,12 @@ def main():
 
         # Just evaluate a trained model
         else:
-            inference (args, model, val_loader, 1, writer, device, 0)
-
+            val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=True, pin_memory= False, num_workers = num_workers)
+            #inference (args, model, val_loader, 1, writer, device, 0)
+            images, labels = next(iter(val_loader))
+            images = images.to(device)
+            labels = labels.to(device)
+            show_saliency_maps(model, images, labels)
    
 def inference(args, model, val_loader, epoch, writer, device, writer_step):
 
@@ -262,6 +275,82 @@ def get_arguments():
     args = parser.parse_args()
     return args
 
+# Show saliency maps for covid
+def show_saliency_maps(model, images, classes):
+
+    # Compute saliency maps for images in X
+    saliency = compute_saliency_maps(images, classes, model)
+
+    # Convert the saliency map from Torch Tensor to numpy array and show images
+    # and saliency maps together.
+    with torch.no_grad():
+        saliency = saliency.cpu().numpy()
+        classes = classes.cpu().numpy()
+        images = images.permute(0, 2, 3, 1).cpu().numpy()
+                
+        N = images.shape[0]
+        idx = 0
+        cnt = 3
+
+        got = [False, False, False]
+        COVIDxDICT = {0: 'pneumonia', 1:'normal', 2:'COVID-19'}
+
+        for i in range(N):
+            for t in range(3):
+                if not got[t] and classes[i] == t:
+                    got[t] = True
+                    plt.subplot(2, cnt, idx + 1)
+                    plt.imshow(images[i])
+                    plt.axis('off')
+                    plt.title(COVIDxDICT[classes[i]])
+                    plt.subplot(2, cnt, cnt + idx + 1)
+                    plt.imshow(saliency[i], cmap=plt.cm.hot)
+                    plt.axis('off')
+                    idx += 1
+            
+        plt.gcf().tight_layout()
+        plt.show()
+
+
+
+def compute_saliency_maps(image, y, model):
+    """
+    Compute a class saliency map using the model for images X and labels y.
+
+    Input:
+    - X: Input images; Tensor of shape (N, 3, H, W)
+    - y: Labels for X; LongTensor of shape (N,)
+    - model: A pretrained CNN that will be used to compute the saliency map.
+
+    Returns:
+    - saliency: A Tensor of shape (N, H, W) giving the saliency maps for the input
+    images.
+    """
+    plt.figure(figsize=(12, 6))
+
+    for i in range(5):
+        plt.subplot(1, 5, i + 1)
+        plt.imshow(image[i].permute(1, 2, 0).cpu())
+        plt.title([y[i].cpu()])
+        plt.axis('off')
+    plt.gcf().tight_layout()
+    plt.show()
+
+    # Make sure the model is in "test" mode
+    model.eval()
+
+    # Make input tensor require gradient
+    image.requires_grad_()
+
+    saliency = None
+
+    # Forward pass
+    score = model(image)
+    correct_score = score.gather(1, y.view(-1, 1)).squeeze()
+    loss = torch.sum(correct_score)
+    loss.backward()
+    saliency,_ = torch.max(torch.abs(image.grad), 1)
+    return saliency
 
 # (used in the `plot_classes_preds` function below)
 def matplotlib_imshow(img, one_channel=False):
@@ -274,7 +363,7 @@ def matplotlib_imshow(img, one_channel=False):
     else:
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
 
-    #plt.show()
+    plt.show()
     return img
 
 def set_parameter_requires_grad(model):
